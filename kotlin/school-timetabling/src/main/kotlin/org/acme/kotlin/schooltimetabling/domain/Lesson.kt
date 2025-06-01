@@ -11,8 +11,8 @@ data class Lesson (
     @PlanningId
     val id: String,
     val subject: String,
-    val teacher: String,
-    val studentGroup: String) {
+    val studentGroup: String
+) {
 
     @JsonIdentityReference
     @PlanningVariable
@@ -20,12 +20,12 @@ data class Lesson (
 
     @JsonIdentityReference
     @PlanningVariable
-    var room: Room? = null
+    var teacher: Teacher? = null
 
-    constructor(id: String, subject: String, teacher: String, studentGroup: String, timeslot: Timeslot?, room: Room?)
-            : this(id, subject, teacher, studentGroup) {
+    constructor(id: String, subject: String, studentGroup: String, timeslot: Timeslot?, teacher: Teacher?)
+            : this(id, subject, studentGroup) {
         this.timeslot = timeslot
-        this.room = room
+        this.teacher = teacher
     }
 
     override fun toString(): String = "$subject($id)"

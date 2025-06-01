@@ -2,11 +2,8 @@ package org.acme.kotlin.schooltimetabling.solver.justifications
 
 import ai.timefold.solver.core.api.score.stream.ConstraintJustification
 import org.acme.kotlin.schooltimetabling.domain.Lesson
-import org.acme.kotlin.schooltimetabling.domain.Room
 
-
-data class RoomConflictJustification(
-    val room: Room,
+data class TimeConflictJustification(
     val lesson1: Lesson,
     val lesson2: Lesson,
     val description: String
@@ -14,14 +11,11 @@ data class RoomConflictJustification(
     ConstraintJustification {
 
     constructor(
-        room: Room,
         lesson1: Lesson,
         lesson2: Lesson
     ) : this(
-        room, lesson1, lesson2,
-        "Room '%s' is used for lesson '%s' for student group '%s' and lesson '%s' for student group '%s' at '%s %s'"
+        lesson1, lesson2, "Lessons '%s' for student group '%s' and '%s' for student group '%s' have the same timeslot at '%s %s'"
             .format(
-                room,
                 lesson1.subject,
                 lesson1.studentGroup,
                 lesson2.subject,

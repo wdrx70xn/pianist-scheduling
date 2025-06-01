@@ -4,7 +4,7 @@ import ai.timefold.solver.test.api.score.stream.ConstraintVerifier
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.inject.Inject
 import org.acme.kotlin.schooltimetabling.domain.Lesson
-import org.acme.kotlin.schooltimetabling.domain.Room
+import org.acme.kotlin.schooltimetabling.domain.Teacher
 import org.acme.kotlin.schooltimetabling.domain.Timeslot
 import org.acme.kotlin.schooltimetabling.domain.Timetable
 import org.junit.jupiter.api.Test
@@ -14,8 +14,8 @@ import java.time.LocalTime
 @QuarkusTest
 class TimetableConstraintProviderTest {
 
-    val ROOM1: Room = Room("1", "Room1")
-    val ROOM2: Room = Room("2", "Room2")
+    val Teacher1: Teacher = Teacher("1", "Room1")
+    val Teacher2: Teacher = Teacher("2", "Room2")
     private val TIMESLOT1: Timeslot = Timeslot("1", DayOfWeek.MONDAY, LocalTime.NOON)
     private val TIMESLOT2: Timeslot = Timeslot("2", DayOfWeek.TUESDAY, LocalTime.NOON)
     private val TIMESLOT3: Timeslot = Timeslot("3", DayOfWeek.TUESDAY, LocalTime.NOON.plusHours(1))
@@ -25,21 +25,10 @@ class TimetableConstraintProviderTest {
     lateinit var constraintVerifier: ConstraintVerifier<TimeTableConstraintProvider, Timetable>
 
     @Test
-    fun roomConflict() {
-        val firstLesson = Lesson("1", "Subject1", "Teacher1", "Group1", TIMESLOT1, ROOM1)
-        val conflictingLesson = Lesson("2", "Subject2", "Teacher2", "Group2", TIMESLOT1, ROOM1)
-        val nonConflictingLesson = Lesson("3", "Subject3", "Teacher3", "Group3", TIMESLOT2, ROOM1)
-        constraintVerifier.verifyThat(TimeTableConstraintProvider::roomConflict)
-            .given(firstLesson, conflictingLesson, nonConflictingLesson)
-            .penalizesBy(1)
-    }
-
-    @Test
     fun teacherConflict() {
-        val conflictingTeacher = "Teacher1"
-        val firstLesson = Lesson("1", "Subject1", conflictingTeacher, "Group1", TIMESLOT1, ROOM1)
-        val conflictingLesson = Lesson("2", "Subject2", conflictingTeacher, "Group2", TIMESLOT1, ROOM2)
-        val nonConflictingLesson = Lesson("3", "Subject3", "Teacher2", "Group3", TIMESLOT2, ROOM1)
+        val firstLesson = Lesson("1", "Subject1", "Group1", TIMESLOT1, Teacher1)
+        val conflictingLesson = Lesson("2", "Subject2", "Group2", TIMESLOT1, Teacher1)
+        val nonConflictingLesson = Lesson("3", "Subject3", "Group3", TIMESLOT2, Teacher2)
         constraintVerifier.verifyThat(TimeTableConstraintProvider::teacherConflict)
             .given(firstLesson, conflictingLesson, nonConflictingLesson)
             .penalizesBy(1)
@@ -48,39 +37,40 @@ class TimetableConstraintProviderTest {
     @Test
     fun studentGroupConflict() {
         val conflictingGroup = "Group1"
-        val firstLesson = Lesson("1", "Subject1", "Teacher1", conflictingGroup, TIMESLOT1, ROOM1)
-        val conflictingLesson = Lesson("2", "Subject2", "Teacher2", conflictingGroup, TIMESLOT1, ROOM2)
-        val nonConflictingLesson = Lesson("3", "Subject3", "Teacher3", "Group3", TIMESLOT2, ROOM1)
+        val firstLesson = Lesson("1", "Subject1", conflictingGroup, TIMESLOT1, Teacher1)
+        val conflictingLesson = Lesson("2", "Subject2", conflictingGroup, TIMESLOT1, Teacher2)
+        val nonConflictingLesson = Lesson("3", "Subject3", "Group3", TIMESLOT2, Teacher1)
         constraintVerifier.verifyThat(TimeTableConstraintProvider::studentGroupConflict)
             .given(firstLesson, conflictingLesson, nonConflictingLesson)
             .penalizesBy(1)
     }
 
+    //TODO refine this
     @Test
-    fun teacherRoomStability() {
+    fun teacherTimeslotBackToBackContinuity() {
         val teacher = "Teacher1"
-        val lessonInFirstRoom = Lesson("1", "Subject1", teacher, "Group1", TIMESLOT1, ROOM1)
-        val lessonInSameRoom = Lesson("2", "Subject2", teacher, "Group2", TIMESLOT1, ROOM1)
-        val lessonInDifferentRoom = Lesson("3", "Subject3", teacher, "Group3", TIMESLOT1, ROOM2)
-        constraintVerifier.verifyThat(TimeTableConstraintProvider::teacherRoomStability)
-            .given(lessonInFirstRoom, lessonInDifferentRoom, lessonInSameRoom)
+        val lessonWithFirstTeacher = Lesson("1", "Subject1", "Group1", TIMESLOT1, Teacher1)
+        val lessonWithSameTeacher = Lesson("2", "Subject2", "Group2", TIMESLOT1, Teacher1)
+        val lessonWithDifferentTeacher = Lesson("3", "Subject3", "Group3", TIMESLOT1, Teacher2)
+        constraintVerifier.verifyThat(TimeTableConstraintProvider::teacherTimeslotBackToBackContinuity)
+            .given(lessonWithFirstTeacher, lessonWithDifferentTeacher, lessonWithSameTeacher)
             .penalizesBy(2)
     }
 
     @Test
     fun teacherTimeEfficiency() {
         val teacher = "Teacher1"
-        val singleLessonOnMonday = Lesson("1", "Subject1", teacher, "Group1", TIMESLOT1, ROOM1)
-        val firstTuesdayLesson = Lesson("2", "Subject2", teacher, "Group2", TIMESLOT2, ROOM1)
-        val secondTuesdayLesson = Lesson("3", "Subject3", teacher, "Group3", TIMESLOT3, ROOM1)
-        val thirdTuesdayLessonWithGap = Lesson("4", "Subject4", teacher, "Group4", TIMESLOT4, ROOM1)
+        val singleLessonOnMonday = Lesson("1", "Subject1", "Group1", TIMESLOT1, Teacher1)
+        val firstTuesdayLesson = Lesson("2", "Subject2", "Group2", TIMESLOT2, Teacher1)
+        val secondTuesdayLesson = Lesson("3", "Subject3", "Group3", TIMESLOT3, Teacher1)
+        val thirdTuesdayLessonWithGap = Lesson("4", "Subject4", "Group4", TIMESLOT4, Teacher1)
         constraintVerifier.verifyThat(TimeTableConstraintProvider::teacherTimeEfficiency)
             .given(singleLessonOnMonday, firstTuesdayLesson, secondTuesdayLesson, thirdTuesdayLessonWithGap)
             .rewardsWith(1) // Second tuesday lesson immediately follows the first.
 
         // Reverse ID order
-        val altSecondTuesdayLesson = Lesson("2", "Subject2", teacher, "Group3", TIMESLOT3, ROOM1)
-        val altFirstTuesdayLesson = Lesson("3", "Subject3", teacher, "Group2", TIMESLOT2, ROOM1)
+        val altSecondTuesdayLesson = Lesson("2", "Subject2", "Group3", TIMESLOT3, Teacher1)
+        val altFirstTuesdayLesson = Lesson("3", "Subject3", "Group2", TIMESLOT2, Teacher1)
         constraintVerifier.verifyThat(TimeTableConstraintProvider::teacherTimeEfficiency)
             .given(altSecondTuesdayLesson, altFirstTuesdayLesson)
             .rewardsWith(1); // Second tuesday lesson immediately follows the first.
@@ -90,11 +80,11 @@ class TimetableConstraintProviderTest {
     fun studentGroupSubjectVariety() {
         val studentGroup = "Group1"
         val repeatedSubject = "Subject1"
-        val mondayLesson = Lesson("1", repeatedSubject, "Teacher1", studentGroup, TIMESLOT1, ROOM1)
-        val firstTuesdayLesson = Lesson("2", repeatedSubject, "Teacher2", studentGroup, TIMESLOT2, ROOM1)
-        val secondTuesdayLesson = Lesson("3", repeatedSubject, "Teacher3", studentGroup, TIMESLOT3, ROOM1)
-        val thirdTuesdayLessonWithDifferentSubject = Lesson("4", "Subject2", "Teacher4", studentGroup, TIMESLOT4, ROOM1)
-        val lessonInAnotherGroup = Lesson("5", repeatedSubject, "Teacher5", "Group2", TIMESLOT1, ROOM1)
+        val mondayLesson = Lesson("1", repeatedSubject, studentGroup, TIMESLOT1, Teacher1)
+        val firstTuesdayLesson = Lesson("2", repeatedSubject, studentGroup, TIMESLOT2, Teacher1)
+        val secondTuesdayLesson = Lesson("3", repeatedSubject, studentGroup, TIMESLOT3, Teacher1)
+        val thirdTuesdayLessonWithDifferentSubject = Lesson("4", "Subject2", studentGroup, TIMESLOT4, Teacher1)
+        val lessonInAnotherGroup = Lesson("5", repeatedSubject, "Group2", TIMESLOT1, Teacher1)
         constraintVerifier.verifyThat(TimeTableConstraintProvider::studentGroupSubjectVariety)
             .given(
                 mondayLesson, firstTuesdayLesson, secondTuesdayLesson, thirdTuesdayLessonWithDifferentSubject,

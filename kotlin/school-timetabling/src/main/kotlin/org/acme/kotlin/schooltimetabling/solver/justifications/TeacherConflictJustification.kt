@@ -2,9 +2,11 @@ package org.acme.kotlin.schooltimetabling.solver.justifications
 
 import ai.timefold.solver.core.api.score.stream.ConstraintJustification
 import org.acme.kotlin.schooltimetabling.domain.Lesson
+import org.acme.kotlin.schooltimetabling.domain.Teacher
+
 
 data class TeacherConflictJustification(
-    val teacher: String,
+    val teacher: Teacher,
     val lesson1: Lesson,
     val lesson2: Lesson,
     val description: String
@@ -12,12 +14,12 @@ data class TeacherConflictJustification(
     ConstraintJustification {
 
     constructor(
-        teacher: String,
+        teacher: Teacher,
         lesson1: Lesson,
         lesson2: Lesson
     ) : this(
         teacher, lesson1, lesson2,
-        "Teacher '%s' needs to teach lesson '%s' for student group '%s' and lesson '%s' for student group '%s' at '%s %s'"
+        "Room '%s' is used for lesson '%s' for student group '%s' and lesson '%s' for student group '%s' at '%s %s'"
             .format(
                 teacher,
                 lesson1.subject,

@@ -5,7 +5,7 @@ import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured.get
 import io.restassured.RestAssured.given
 import io.restassured.http.ContentType
-import org.acme.kotlin.schooltimetabling.domain.Room
+import org.acme.kotlin.schooltimetabling.domain.Teacher
 import org.acme.kotlin.schooltimetabling.domain.Timeslot
 import org.acme.kotlin.schooltimetabling.domain.Timetable
 import org.awaitility.Awaitility.await
@@ -52,8 +52,8 @@ class TimetableResourceTest {
         assertEquals(solution.solverStatus, SolverStatus.NOT_SOLVING)
         assertNotNull(solution.lessons)
         assertNotNull(solution.timeslots)
-        assertNotNull(solution.rooms)
-        assertNotNull(solution.lessons.get(0).room)
+        assertNotNull(solution.teachers)
+        assertNotNull(solution.lessons.get(0).teacher)
         assertNotNull(solution.lessons.get(0).timeslot)
         assertTrue(solution.score?.isFeasible!!)
     }
@@ -67,11 +67,11 @@ class TimetableResourceTest {
             .extract()
             .`as`(Timetable::class.java)
 
-        val roomList: List<Room> = testTimetable.rooms
+        val teacherList: List<Teacher> = testTimetable.teachers
         val timeslotList: List<Timeslot> = testTimetable.timeslots
         var i = 0
         for (lesson in testTimetable.lessons) { // Initialize the solution.
-            lesson.room = roomList[i % roomList.size]
+            lesson.teacher = teacherList[i % teacherList.size]
             lesson.timeslot = timeslotList[i % timeslotList.size]
             i += 1
         }

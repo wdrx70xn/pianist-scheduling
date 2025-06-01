@@ -6,10 +6,10 @@ import ai.timefold.solver.core.api.score.stream.ConstraintFactory
 import ai.timefold.solver.core.api.score.stream.ConstraintProvider
 import ai.timefold.solver.core.api.score.stream.Joiners
 import org.acme.kotlin.schooltimetabling.domain.Lesson
-import org.acme.kotlin.schooltimetabling.solver.justifications.RoomConflictJustification
+import org.acme.kotlin.schooltimetabling.solver.justifications.TeacherConflictJustification
 import org.acme.kotlin.schooltimetabling.solver.justifications.StudentGroupConflictJustification
 import org.acme.kotlin.schooltimetabling.solver.justifications.StudentGroupSubjectVarietyJustification
-import org.acme.kotlin.schooltimetabling.solver.justifications.TeacherConflictJustification
+import org.acme.kotlin.schooltimetabling.solver.justifications.TimeConflictJustification
 import org.acme.kotlin.schooltimetabling.solver.justifications.TeacherRoomStabilityJustification
 import org.acme.kotlin.schooltimetabling.solver.justifications.TeacherTimeEfficiencyJustification
 import java.time.Duration
@@ -19,17 +19,30 @@ class TimeTableConstraintProvider : ConstraintProvider {
     override fun defineConstraints(constraintFactory: ConstraintFactory): Array<Constraint> {
         return arrayOf(
             // Hard constraints
-            roomConflict(constraintFactory),
             teacherConflict(constraintFactory),
             studentGroupConflict(constraintFactory),
             // Soft constraints
-            teacherRoomStability(constraintFactory),
+            teacherTimeslotBackToBackContinuity(constraintFactory),
             teacherTimeEfficiency(constraintFactory),
             studentGroupSubjectVariety(constraintFactory)
         )
     }
 
     fun roomConflict(constraintFactory: ConstraintFactory): Constraint {
+        // A teacher can teach at most one lesson at the same time.
+        return constraintFactory
+            .forEachUniquePair(
+                Lesson::class.java,
+                Joiners.equal(Lesson::timeslot)
+            )
+            .penalize(HardSoftScore.ONE_HARD)
+            .justifyWith { lesson1: Lesson, lesson2: Lesson, _ ->
+                TimeConflictJustification(lesson1, lesson2)
+            }
+            .asConstraint("Time conflict")
+    }
+
+    fun teacherConflict(constraintFactory: ConstraintFactory): Constraint {
         // A room can accommodate at most one lesson at the same time.
         return constraintFactory
             // Select each pair of 2 different lessons ...
@@ -38,27 +51,12 @@ class TimeTableConstraintProvider : ConstraintProvider {
                 // ... in the same timeslot ...
                 Joiners.equal(Lesson::timeslot),
                 // ... in the same room ...
-                Joiners.equal(Lesson::room)
+                Joiners.equal(Lesson::teacher)
             )
             // ... and penalize each pair with a hard weight.
             .penalize(HardSoftScore.ONE_HARD)
             .justifyWith { lesson1: Lesson, lesson2: Lesson, _ ->
-                RoomConflictJustification(lesson1.room!!, lesson1, lesson2)
-            }
-            .asConstraint("Room conflict")
-    }
-
-    fun teacherConflict(constraintFactory: ConstraintFactory): Constraint {
-        // A teacher can teach at most one lesson at the same time.
-        return constraintFactory
-            .forEachUniquePair(
-                Lesson::class.java,
-                Joiners.equal(Lesson::timeslot),
-                Joiners.equal(Lesson::teacher)
-            )
-            .penalize(HardSoftScore.ONE_HARD)
-            .justifyWith { lesson1: Lesson, lesson2: Lesson, _ ->
-                TeacherConflictJustification(lesson1.teacher, lesson1, lesson2)
+                TeacherConflictJustification(lesson1.teacher!!, lesson1, lesson2)
             }
             .asConstraint("Teacher conflict")
     }
@@ -78,17 +76,21 @@ class TimeTableConstraintProvider : ConstraintProvider {
             .asConstraint("Student group conflict")
     }
 
-    fun teacherRoomStability(constraintFactory: ConstraintFactory): Constraint {
+    fun teacherTimeslotBackToBackContinuity(constraintFactory: ConstraintFactory): Constraint {
         // A teacher prefers to teach in a single room.
         return constraintFactory
             .forEachUniquePair(
                 Lesson::class.java,
                 Joiners.equal(Lesson::teacher)
             )
-            .filter { lesson1: Lesson, lesson2: Lesson -> lesson1.room !== lesson2.room }
-            .penalize(HardSoftScore.ONE_SOFT)
+            .filter { lesson1: Lesson, lesson2: Lesson -> lesson1.teacher == lesson2.teacher && lesson1.timeslot?.dayOfWeek == lesson2.timeslot?.dayOfWeek }
+            .penalize(HardSoftScore.ONE_SOFT, { lesson1: Lesson, lesson2: Lesson ->
+                val timeDifference1 = Duration.between(lesson1.timeslot!!.endTime, lesson2.timeslot!!.startTime)
+                val timeDifference2 = Duration.between(lesson2.timeslot!!.endTime, lesson1.timeslot!!.startTime)
+                min(timeDifference1.abs(), timeDifference2.abs()).seconds.toInt()
+            })
             .justifyWith { lesson1: Lesson, lesson2: Lesson, _ ->
-                TeacherRoomStabilityJustification(lesson1.teacher, lesson1, lesson2)
+                TeacherRoomStabilityJustification(lesson1.teacher!!.name, lesson1, lesson2)
             }
             .asConstraint("Teacher room stability")
     }
@@ -109,7 +111,7 @@ class TimeTableConstraintProvider : ConstraintProvider {
             }
             .reward(HardSoftScore.ONE_SOFT)
             .justifyWith{ lesson1: Lesson, lesson2: Lesson, _ ->
-                TeacherTimeEfficiencyJustification(lesson1.teacher, lesson1, lesson2)
+                TeacherTimeEfficiencyJustification(lesson1.teacher!!.name, lesson1, lesson2)
             }
             .asConstraint("Teacher time efficiency")
     }
@@ -136,4 +138,6 @@ class TimeTableConstraintProvider : ConstraintProvider {
             .asConstraint("Student group subject variety")
     }
 
+    fun min(first: Duration, second: Duration)
+            = if (first.seconds < second.seconds) first else second
 }

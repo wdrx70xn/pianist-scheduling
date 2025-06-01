@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo
 import com.fasterxml.jackson.annotation.ObjectIdGenerators
 
 @JsonIdentityInfo(
-    scope = Room::class,
+    scope = Teacher::class,
     generator = ObjectIdGenerators.PropertyGenerator::class,
     property = "id"
 )
-data class Room(
+data class Teacher(
     @PlanningId
     val id: String,
     val name: String) {

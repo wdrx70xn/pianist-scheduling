@@ -16,7 +16,7 @@ data class Timetable (
     val timeslots: List<Timeslot>,
     @ProblemFactCollectionProperty
     @ValueRangeProvider
-    val rooms: List<Room>,
+    val teachers: List<Teacher>,
     @PlanningEntityCollectionProperty
     val lessons: List<Lesson>,
     @PlanningScore

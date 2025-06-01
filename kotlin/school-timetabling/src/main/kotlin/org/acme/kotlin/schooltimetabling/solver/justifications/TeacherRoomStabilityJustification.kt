@@ -20,11 +20,11 @@ data class TeacherRoomStabilityJustification(
         "Teacher '%s' has two lessons in different rooms: room '%s' at '%s %s' and room '%s' at '%s %s'"
             .format(
                 teacher,
-                lesson1.room,
+                lesson1.teacher,
                 lesson1.studentGroup,
                 lesson1.timeslot?.dayOfWeek,
                 lesson1.timeslot?.startTime,
-                lesson2.room,
+                lesson2.teacher,
                 lesson2.timeslot?.dayOfWeek,
                 lesson2.timeslot?.startTime
             )
